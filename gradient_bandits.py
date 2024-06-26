@@ -101,7 +101,7 @@ class Bandit:
                 noise = np.random.laplace(scale=self.noise_scale, size=self.k)
 
             self.q_estimation += self.step_size * (reward - baseline) * (one_hot - self.action_prob) + noise
-            # self.q_estimation += self.step_size * (reward - baseline) * (one_hot - self.action_prob) + noise
+            # self.q_estimation += self.step_size * (reward - baseline) * (one_hot - self.action_prob) 
         else:
             # update estimation with constant step size
             self.q_estimation[action] += self.step_size * (reward - self.q_estimation[action])
@@ -192,10 +192,10 @@ def simulate(runs, time, bandits):
 
 def figure_2_5(runs=2000, time=1000):
     bandits = []
-    bandits.append(Bandit(gradient=True, step_size=0.1, gradient_baseline=True, true_reward=4))
-    bandits.append(Bandit(gradient=True, step_size=0.1, gradient_baseline=False, true_reward=4))
-    bandits.append(Bandit(gradient=True, step_size=0.4, gradient_baseline=True, true_reward=4))
-    bandits.append(Bandit(gradient=True, step_size=0.4, gradient_baseline=False, true_reward=4))
+    # bandits.append(Bandit(gradient=True, step_size=0.1, gradient_baseline=True, true_reward=4))
+    # bandits.append(Bandit(gradient=True, step_size=0.1, gradient_baseline=False, true_reward=4))
+    # bandits.append(Bandit(gradient=True, step_size=0.4, gradient_baseline=True, true_reward=4))
+    # bandits.append(Bandit(gradient=True, step_size=0.4, gradient_baseline=False, true_reward=4))
 
     # Bandits with Gaussian noise
     bandits.append(Bandit(gradient=True, step_size=0.1, gradient_baseline=True, true_reward=4, noise_type='gaussian', noise_scale=0.1))
@@ -211,10 +211,10 @@ def figure_2_5(runs=2000, time=1000):
 
     best_action_counts, _ = simulate(runs, time, bandits)
     labels = [
-        r'$\alpha = 0.1$, with baseline',
-        r'$\alpha = 0.1$, without baseline',
-        r'$\alpha = 0.4$, with baseline',
-        r'$\alpha = 0.4$, without baseline',
+        # r'$\alpha = 0.1$, with baseline',
+        # r'$\alpha = 0.1$, without baseline',
+        # r'$\alpha = 0.4$, with baseline',
+        # r'$\alpha = 0.4$, without baseline',
         r'$\alpha = 0.1$, with baseline, Gaussian noise',
         r'$\alpha = 0.1$, without baseline, Gaussian noise',
         r'$\alpha = 0.4$, with baseline, Gaussian noise',
