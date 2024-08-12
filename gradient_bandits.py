@@ -26,7 +26,7 @@ class Bandit:
     # @gradient: if True, use gradient based bandit algorithm
     # @gradient_baseline: if True, use average reward as baseline for gradient based bandit algorithm
     def __init__(self, k_arm=10, epsilon=0., initial=0., step_size=0.1, sample_averages=False, UCB_param=None,
-                 gradient=False, gradient_baseline=False, true_reward=0., noise_type=None, noise_scale=1.0, 
+                 gradient=False, gradient_baseline=False, true_reward=0., noise_type=None, noise_scale=0.1, 
                  dp_UCB=False, epsilon_dp_UCB=0.1, time_size=1000):
         self.k = k_arm
         self.step_size = step_size
@@ -100,14 +100,13 @@ class Bandit:
             UCB_estimation = self.q_estimation + \
                 self.UCB_param * np.sqrt(np.log(self.time + 1) / (self.action_count + 1e-5))
             q_best = np.max(UCB_estimation)
-            print(np.random.choice(np.where(UCB_estimation == q_best)[0]))
             return np.random.choice(np.where(UCB_estimation == q_best)[0])
 
         if self.gradient:
             exp_est = np.exp(self.q_estimation)
             self.action_prob = exp_est / np.sum(exp_est)
             return np.random.choice(self.indices, p=self.action_prob)
-
+        
         q_best = np.max(self.q_estimation)
         return np.random.choice(np.where(self.q_estimation == q_best)[0])
 
@@ -134,7 +133,7 @@ class Bandit:
                 for j in range(i):
                     self.alpha[j] = 0
                     self.alpha_hat[j] = 0
-                self.alpha_hat[i] = self.alpha[i] + np.random.laplace(loc=0.0, scale=1/self.epsilon_dp_UCB, size=self.k)
+                self.alpha_hat[i] = self.alpha[i] + np.random.laplace(loc=0.0, scale=self.noise_scale, size=self.k)
                 self.noisy_sums = self.alpha_hat.T.dot(np.flip(binary_rep))
                 self.sums[action] += self.mu[action]
                 # update total reward
@@ -205,11 +204,15 @@ def average_reward(runs=2000, time=1000):
     # bandits.append(Bandit(epsilon=0, UCB_param=2, sample_averages=True))
     # bandits.append(Bandit(epsilon=0.1, sample_averages=True))
     bandits.append(Bandit(gradient=True, step_size=0.1, gradient_baseline=True, noise_type='laplace', noise_scale=0.1))
-    bandits.append(Bandit(dp_UCB=True, epsilon_dp_UCB=0.1, time_size=time))
+    bandits.append(Bandit(gradient=True, step_size=0.5, gradient_baseline=True, noise_type='laplace', noise_scale=0.1))
+    bandits.append(Bandit(gradient=True, step_size=1, gradient_baseline=True, noise_type='laplace', noise_scale=0.1))
+    bandits.append(Bandit(dp_UCB=True, epsilon_dp_UCB=0.1, time_size=time, noise_scale=0.1))
     _, average_rewards, _ = simulate(runs, time, bandits)
 
     plt.plot(average_rewards[0], label=r'$\alpha = 0.1$, $\sigma = 0.1$, with baseline, Laplace noise')
-    plt.plot(average_rewards[1], label=r'DP-UCB $\sigma = 0.1$')
+    plt.plot(average_rewards[1], label=r'$\alpha = 0.5$, $\sigma = 0.1$, with baseline, Laplace noise')
+    plt.plot(average_rewards[2], label=r'$\alpha = 1$, $\sigma = 0.1$, with baseline, Laplace noise')
+    plt.plot(average_rewards[3], label=r'DP-UCB $\sigma = 0.1$')
     plt.xlabel('Steps')
     plt.ylabel('Average reward')
     plt.legend()
@@ -227,14 +230,15 @@ def optimal_action(runs=2000, time=1000):
 
     # Bandits with Laplace noise
     bandits.append(Bandit(gradient=True, step_size=0.1, gradient_baseline=True, true_reward=4, noise_type='laplace', noise_scale=0.1))
-
+    bandits.append(Bandit(gradient=True, step_size=0.5, gradient_baseline=True, true_reward=4, noise_type='laplace', noise_scale=0.1))
+    # bandits.append(Bandit(gradient=True, step_size=1.0, gradient_baseline=True, true_reward=4, noise_type='laplace', noise_scale=0.1))
     # DP-UCB
-    bandits.append(Bandit(dp_UCB=True, epsilon_dp_UCB=0.1, time_size=time))
+    # bandits.append(Bandit(dp_UCB=True, epsilon_dp_UCB=0.1, time_size=time, noise_scale=0.1))
 
     best_action_counts, _, _ = simulate(runs, time, bandits)
     labels = [
-        r'$\alpha = 0.1$, with baseline, Laplace noise',
-        r'DP-UCB $\sigma = 0.1$'
+        r'$\alpha = 0.1$, $\sigma = 0.1$, Laplace noise',
+        r'$\alpha = 0.5$, $\sigma = 0.1$, Laplace noise',
     ]
     # best_action_counts, _ = simulate(runs, time, bandits)
     # labels = [r'$\alpha = 0.1$, with baseline',
@@ -256,11 +260,16 @@ def cumulative_regret(runs=2000, time=1000):
     # bandits.append(Bandit(epsilon=0, UCB_param=2, sample_averages=True))
     # bandits.append(Bandit(epsilon=0.1, sample_averages=True))
     bandits.append(Bandit(gradient=True, step_size=0.1, gradient_baseline=True, noise_type='laplace', noise_scale=0.1))
-    bandits.append(Bandit(dp_UCB=True, epsilon_dp_UCB=0.1, time_size=time))
+    bandits.append(Bandit(gradient=True, step_size=0.5, gradient_baseline=True, noise_type='laplace', noise_scale=0.1))
+    bandits.append(Bandit(gradient=True, step_size=1.0, gradient_baseline=True, noise_type='laplace', noise_scale=0.1))
+    bandits.append(Bandit(dp_UCB=True, epsilon_dp_UCB=0.1, time_size=time, noise_scale=0.1))
+
     _, _, cumulative_regret = simulate(runs, time, bandits)
 
-    plt.plot(cumulative_regret[0], label=r'$\alpha = 0.1$, $\sigma = 0.1$, with baseline, Laplace noise')
-    plt.plot(cumulative_regret[1], label=r'DP-UCB $\sigma = 0.1$')
+    plt.plot(cumulative_regret[0], label=r'$\alpha = 0.1$, $\sigma = 0.1$, Laplace noise')
+    plt.plot(cumulative_regret[1], label=r'$\alpha = 0.5$, $\sigma = 0.1$, Laplace noise')
+    plt.plot(cumulative_regret[2], label=r'$\alpha = 1.0$, $\sigma = 0.1$, Laplace noise')
+    plt.plot(cumulative_regret[3], label=r'DP-UCB $\sigma = 0.1$')
     plt.xlabel('Steps')
     plt.ylabel('Cumulative regret')
     plt.legend()
