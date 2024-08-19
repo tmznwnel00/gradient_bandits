@@ -15,6 +15,37 @@ from tqdm import trange
 
 matplotlib.use('Agg')
 
+def laplace_mech(v, sensitivity, epsilon):
+    return v + np.random.laplace(loc=0, scale=sensitivity/epsilon)
+
+def score(data, option):
+    return data.value_counts()[option]/1000
+
+def exponential(x, R, u, sensitivity, epsilon):
+    # Calculate the score for each element of R
+    scores = [u(x, r) for r in R]
+    
+    # Calculate the probability for each element, based on its score
+    probabilities = [np.exp(epsilon * score / (2 * sensitivity)) for score in scores]
+    
+    # Normalize the probabilties so they sum to 1
+    probabilities = probabilities / np.linalg.norm(probabilities, ord=1)
+
+    # Choose an element from R based on the probabilities
+    return np.random.choice(R, 1, p=probabilities)[0]
+
+def report_noisy_max(x, R, u, sensitivity, epsilon):
+    # Calculate the score for each element of R
+    scores = [u(x, r) for r in R]
+
+    # Add noise to each score
+    noisy_scores = [laplace_mech(score, sensitivity, epsilon) for score in scores]
+
+    # Find the index of the maximum score
+    max_idx = np.argmax(noisy_scores)
+    
+    # Return the element corresponding to that index
+    return R[max_idx]
 
 class Bandit:
     # @k_arm: # of arms
