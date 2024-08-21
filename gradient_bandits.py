@@ -230,20 +230,17 @@ def simulate(runs, time, bandits):
     mean_cumulative_regret = cumulative_regret.mean(axis=1)
     return mean_best_action_counts, mean_rewards, mean_cumulative_regret
 
-def average_reward(runs=2000, time=1000):
+def average_reward(runs=2000, time=2000):
     bandits = []
-    # bandits.append(Bandit(epsilon=0, UCB_param=2, sample_averages=True))
-    # bandits.append(Bandit(epsilon=0.1, sample_averages=True))
-    bandits.append(Bandit(gradient=True, step_size=0.1, gradient_baseline=True, noise_type='laplace', noise_scale=1.0))
-    bandits.append(Bandit(gradient=True, step_size=0.5, gradient_baseline=True, noise_type='laplace', noise_scale=1.0))
-    bandits.append(Bandit(gradient=True, step_size=1, gradient_baseline=True, noise_type='laplace', noise_scale=1.0))
-    bandits.append(Bandit(dp_UCB=True, epsilon_dp_UCB=0.1, time_size=time, noise_scale=1.0))
+    bandits.append(Bandit(epsilon=0.1, UCB_param=1, sample_averages=True))
+    bandits.append(Bandit(epsilon=0.1, UCB_param=2, sample_averages=True))
+    bandits.append(Bandit(epsilon=0.1, UCB_param=4, sample_averages=True))
+    # bandits.append(Bandit(dp_UCB=True, epsilon_dp_UCB=0.1, time_size=time, noise_scale=1.0))
     _, average_rewards, _ = simulate(runs, time, bandits)
 
-    plt.plot(average_rewards[0], label=r'$\alpha = 0.1$, $\sigma = 1.0$, with baseline, Laplace noise')
-    plt.plot(average_rewards[1], label=r'$\alpha = 0.5$, $\sigma = 1.0$, with baseline, Laplace noise')
-    plt.plot(average_rewards[2], label=r'$\alpha = 1$, $\sigma = 1.0$, with baseline, Laplace noise')
-    plt.plot(average_rewards[3], label=r'DP-UCB $\sigma = 1.0$')
+    plt.plot(average_rewards[0], label=r'UCB $\epsilon = 0.1$, $c = 1$')
+    plt.plot(average_rewards[1], label=r'UCB $\epsilon = 0.1$, $c = 2$')
+    plt.plot(average_rewards[2], label=r'UCB $\epsilon = 0.1$, $c = 4$')
     plt.xlabel('Steps')
     plt.ylabel('Average reward')
     plt.legend()
@@ -256,22 +253,26 @@ def optimal_action(runs=2000, time=1000):
     bandits = []
     # bandits.append(Bandit(gradient=True, step_size=0.1, gradient_baseline=True, true_reward=4))
 
-    # Bandits with Gaussian noise
     # bandits.append(Bandit(gradient=True, step_size=0.1, gradient_baseline=True, true_reward=4, noise_type='gaussian', noise_scale=0.1))
 
-    # Bandits with Laplace noise
-    bandits.append(Bandit(gradient=True, step_size=0.1, gradient_baseline=True, true_reward=4, noise_type='laplace', noise_scale=1.0))
-    bandits.append(Bandit(gradient=True, step_size=0.5, gradient_baseline=True, true_reward=4, noise_type='laplace', noise_scale=1.0))
-    bandits.append(Bandit(gradient=True, step_size=1.0, gradient_baseline=True, true_reward=4, noise_type='laplace', noise_scale=1.0))
-    # DP-UCB
-    bandits.append(Bandit(dp_UCB=True, epsilon_dp_UCB=0.1, time_size=time, noise_scale=1.0))
+    # bandits.append(Bandit(gradient=True, step_size=0.1, gradient_baseline=True, true_reward=4, noise_type='laplace', noise_scale=1.0))
+    # bandits.append(Bandit(gradient=True, step_size=0.5, gradient_baseline=True, true_reward=4, noise_type='laplace', noise_scale=1.0))
+    # bandits.append(Bandit(gradient=True, step_size=1.0, gradient_baseline=True, true_reward=4, noise_type='laplace', noise_scale=1.0))
+    # bandits.append(Bandit(dp_UCB=True, epsilon_dp_UCB=0.1, time_size=time, noise_scale=1.0))
+
+    # bandits.append(Bandit(epsilon=0, UCB_param=2, sample_averages=True))
+    bandits.append(Bandit(epsilon=0.1, UCB_param=1, sample_averages=True))
+    bandits.append(Bandit(epsilon=0.1, UCB_param=2, sample_averages=True))
+    bandits.append(Bandit(epsilon=0.1, UCB_param=4, sample_averages=True))
+    # bandits.append(Bandit(epsilon=0.5, UCB_param=2, sample_averages=True))
 
     best_action_counts, _, _ = simulate(runs, time, bandits)
     labels = [
-        r'$\alpha = 0.1$, $\sigma = 1.0$, Laplace noise',
-        r'$\alpha = 0.5$, $\sigma = 1.0$, Laplace noise',
-        r'$\alpha = 1.0$, $\sigma = 1.0$, Laplace noise',
-        r'DP-UCB $\sigma = 1.0$'
+        # r'UCB $\epsilon = 0$, $c = 2$',
+        r'UCB $\epsilon = 0.1$, $c = 1$',
+        r'UCB $\epsilon = 0.1$, $c = 2$',
+        r'UCB $\epsilon = 0.1$, $c = 4$',
+        # r'UCB $\epsilon = 0.5$, $c = 2$',
     ]
     # best_action_counts, _ = simulate(runs, time, bandits)
     # labels = [r'$\alpha = 0.1$, with baseline',
@@ -292,15 +293,19 @@ def cumulative_regret(runs=2000, time=1000):
     bandits = []
     # bandits.append(Bandit(epsilon=0, UCB_param=2, sample_averages=True))
     # bandits.append(Bandit(epsilon=0.1, sample_averages=True))
-    bandits.append(Bandit(gradient=True, step_size=1.0, gradient_baseline=True, noise_type='laplace', noise_scale=1.0))
-    bandits.append(Bandit(gradient=True, step_size=2.0, gradient_baseline=True, noise_type='laplace', noise_scale=1.0))
-    bandits.append(Bandit(dp_UCB=True, epsilon_dp_UCB=0.1, time_size=time, noise_scale=1.0))
+    # bandits.append(Bandit(gradient=True, step_size=1.0, gradient_baseline=True, noise_type='laplace', noise_scale=1.0))
+    # bandits.append(Bandit(gradient=True, step_size=2.0, gradient_baseline=True, noise_type='laplace', noise_scale=1.0))
+    # bandits.append(Bandit(dp_UCB=True, epsilon_dp_UCB=0.1, time_size=time, noise_scale=1.0))
+
+    bandits.append(Bandit(epsilon=0.1, UCB_param=1, sample_averages=True))
+    bandits.append(Bandit(epsilon=0.1, UCB_param=2, sample_averages=True))
+    bandits.append(Bandit(epsilon=0.1, UCB_param=4, sample_averages=True))
 
     _, _, cumulative_regret = simulate(runs, time, bandits)
 
-    plt.plot(cumulative_regret[0], label=r'$\alpha = 1.0$, $\sigma = 1.0$, Laplace noise')
-    plt.plot(cumulative_regret[1], label=r'$\alpha = 2.0$, $\sigma = 1.0$, Laplace noise')
-    plt.plot(cumulative_regret[2], label=r'DP-UCB $\sigma = 1.0$')
+    plt.plot(cumulative_regret[0], label=r'UCB $\epsilon = 0.1$, $c = 1$')
+    plt.plot(cumulative_regret[1], label=r'UCB $\epsilon = 0.1$, $c = 2$')
+    plt.plot(cumulative_regret[2], label=r'UCB $\epsilon = 0.1$, $c = 4$')
     plt.xlabel('Steps')
     plt.ylabel('Cumulative regret')
     plt.legend()
@@ -309,4 +314,4 @@ def cumulative_regret(runs=2000, time=1000):
     plt.close()
 
 if __name__ == '__main__':
-    average_reward()
+    cumulative_regret()
