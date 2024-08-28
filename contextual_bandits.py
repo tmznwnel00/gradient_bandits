@@ -1,102 +1,75 @@
-import tensorflow as tf
-import tensorflow.contrib.slim as slim      #http://www.popit.kr/tf-slim-%EC%8B%9C%EC%9E%91%ED%95%98%EA%B8%B0/
 import numpy as np
+import tensorflow as tf
+from tensorflow.keras.layers import *
+from tensorflow.keras.models import Model
+from tensorflow.keras.optimizers import Adam
 
-class contextual_bandit():
-    def __init__(self):
-        self.state = 0
-        #List out our bandits. 
-        self.bandits = np.array([
-             [0.2, 0, 0 ,-5],          # Currently arms 4
-             [0.1, -5, 1, 0.25],       # 2 and 
-             [-5, 5, 5, 5]             # 1 are the most optimal.(respectively)
-        ])
-        self.num_bandits = self.bandits.shape[0]
-        self.num_actions = self.bandits.shape[1]
-        
-    def getBandit(self):
-        self.state = np.random.randint(0,len(self.bandits)) # get a random state for each episode.
-        return self.state
-        
-    def pullArm(self,action):
-        bandit = self.bandits[self.state,action]
-        result = np.random.randn(1)
-        if result > bandit:
-            #return a positive reward.
-            return 1
+tf.config.run_functions_eagerly(True)
+
+# states = random states generated for training, 
+# total_states = possible states count
+def ohe_generator(states, total_states):
+    ohe = np.zeros((len(states), total_states))
+    for index, array in enumerate(ohe):
+        ohe[index][states[index]] = 1
+    return ohe
+
+class contextual_bandits:
+    def __init__(self, states, actions):
+        self.states = states
+        self.actions = actions
+    
+    def reward(self, state, action):
+        if (state * action) % 2 == 1:
+            return 0.5 + 0.05 * ((state + action) % 10) + np.random.rand() * 0.1
         else:
-            #return a negative reward.
-            return -1
+            return 0.9 - 0.1 * ((state + action) % 10) + np.random.rand() * 0.1
+    
+    def network(self):
+        input_ = Input(shape=(self.states,))
+        dense1 = Dense(128, activation='relu')(input_)
+        dropout1 = Dropout(0.1)(dense1)
+        dense2 = Dense(64, activation='relu')(dropout1)
+        dropout2 = Dropout(0.1)(dense2)
+        dense3 = Dense(self.actions, activation='sigmoid')(dropout2)
+        model = Model(input_, dense3)
         
-class agent():
-    def __init__(self, lr, s_size, a_size):
-        # These lines established the feed-forward part of the network. 
-        # The agent takes a state and produces an action.
-        self.state_in= tf.placeholder(shape=[1],dtype=tf.int32)
-        state_in_OH = slim.one_hot_encoding(self.state_in,s_size)
-        
-        output = slim.fully_connected(state_in_OH, a_size,           
-            biases_initializer=None, activation_fn=tf.nn.sigmoid, weights_initializer=tf.ones_initializer())
-        '''
-        `fully_connected` creates a variable called `weights`,
-        representing a fully connected weight matrix, which is multiplied by the `inputs`
-        '''      
-        self.output = tf.reshape(output,[-1])
-        self.chosen_action = tf.argmax(self.output, 0)
+        rms = Adam(learning_rate=0.0001)
+        model.compile(loss="mean_absolute_error", optimizer=rms, metrics=["mean_absolute_error"])
+        return model   
+    
+batch_size = 128
+states = 100
+actions = 4
 
-        # The next six lines establish the training proceedure.
-        # We feed the reward and chosen action into the network
-        # to compute the loss, and use it to update the network.
-        self.reward_holder = tf.placeholder(shape=[1],dtype=tf.float32)
-        self.action_holder = tf.placeholder(shape=[1],dtype=tf.int32)
-        self.responsible_weight = tf.slice(self.output,self.action_holder,[1])
-        self.loss = -(tf.log(self.responsible_weight)*self.reward_holder)
-        optimizer = tf.train.GradientDescentOptimizer(learning_rate=lr)
-        self.update = optimizer.minimize(self.loss)
+def training():
+    cb = contextual_bandits(states, actions)
+    model = cb.network()
+    sample_states = np.random.choice(range(states), size=batch_size*100)
+    state_ohe = ohe_generator(sample_states, states)
+    actual_reward = [[cb.reward(x, y) for y in range(cb.actions)] for x in sample_states]
+    actual_reward_matrix = np.zeros((len(state_ohe), cb.actions))
+    for index, x in enumerate(actual_reward):
+        actual_reward_matrix[index] = np.array(x)
+    model.fit(state_ohe, actual_reward_matrix, batch_size=batch_size, epochs=20) 
+    return model
 
-tf.reset_default_graph() # Clear the Tensorflow graph.
- 
-cBandit = contextual_bandit() # Load the bandits.
-myAgent = agent(lr=0.001, s_size=cBandit.num_bandits, a_size=cBandit.num_actions) # Load the agent.
-weights = tf.trainable_variables()[0]  # The weights we will evaluate to look into the network.
+# Train the model and save it for later use
+model = training()
 
-total_episodes = 10000 # Set total number of episodes to train agent on.
-total_reward = np.zeros([cBandit.num_bandits, cBandit.num_actions]) # Set scoreboard for bandits to 0.
-e = 0.1 # Set the chance of taking a random action.
+# Now, use the trained model to predict the estimated rewards
+state_ohe = ohe_generator(np.array([x for x in range(100)]), states)
+estimated_reward = model.predict(state_ohe)
 
-init = tf.global_variables_initializer()
+# Print the best action for each state based on the estimated rewards
+print({x: np.argmax(y) for x, y in enumerate(estimated_reward)})
 
-# Launch the tensorflow graph
-with tf.Session() as sess:
-    sess.run(init)
-    i = 0
-    while i < total_episodes:
-        s = cBandit.getBandit() # Get a state from the environment.
-        
-        # Choose either a random action or one from our network.
-        if np.random.rand(1) < e:
-            action = np.random.randint(cBandit.num_actions)
-        else:
-            action = sess.run(myAgent.chosen_action, feed_dict={myAgent.state_in:[s]})
-        
-        reward = cBandit.pullArm(action) # Get our reward for taking an action given a bandit.
-        
-        # Update the network.
-        feed_dict={myAgent.reward_holder:[reward], 
-                   myAgent.action_holder:[action],
-                   myAgent.state_in:[s]}
-        
-        _, ww = sess.run([myAgent.update,weights], feed_dict=feed_dict)
-        
-        # Update our running tally of scores.
-        total_reward[s,action] += reward
-        if i % 500 == 0:
-            print("Mean reward for each of the " + str(cBandit.num_bandits) + " bandits: " + str(np.mean(total_reward, axis=1)))
-        i+=1
-
-for a in range(cBandit.num_bandits):
-    print("The agent thinks action " + str(np.argmax(ww[a])+1) + " for bandit " + str(a+1) + " is the most promising....")
-    if np.argmax(ww[a]) == np.argmin(cBandit.bandits[a]):
-        print("...and it was right!")
-    else:
-        print("...and it was wrong!")
+# Testing the reward function for state 0 and 93
+cb = contextual_bandits(100, 4)
+print('\nReward for state {}\n'.format(0))
+for x in range(4):
+    print(cb.reward(0, x))
+    
+print('\nReward for state {}\n'.format(93))
+for x in range(4):
+    print(cb.reward(93, x))
